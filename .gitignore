@@ -1,0 +1,23 @@
+# Data files
+data/
+
+# API keys - NEVER commit these
+keys.txt
+
+# Python
+__pycache__/
+*.egg-info/
+*.pyc
+.eggs/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Outputs
+outputs/extractions/
+outputs/*.html
+
+# OS files
+.DS_Store
