@@ -1,0 +1,17 @@
+{
+  "drug_name": "Nifedipine",
+  "dili_likelihood_score": "B",
+  "injury_pattern": "cholestatic",
+  "fraction_patients_with_enzyme_elevation": null,
+  "fraction_patients_with_dili": null,
+  "is_immune_mediated": false,
+  "risk_factors": null,
+  "safe_dose": null,
+  "toxic_dose": null,
+  "onset_time": null,
+  "peak_alt": null,
+  "peak_alp": null,
+  "r_ratio": null,
+  "bilirubin_peak": null,
+  "regulatory_status": null
+}
