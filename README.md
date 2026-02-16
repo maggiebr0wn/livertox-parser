@@ -2,6 +2,8 @@
 
 A pipeline to extract structured hepatotoxicity information from LiverTox XML documents using a combination of deterministic (regex/XML parsing) and LLM-based extraction.
 
+HTML report here: [report.html](https://github.com/maggiebr0wn/livertox-parser/blob/main/report.html)
+
 ## Overview
 
 This pipeline processes 85 LiverTox XML drug files and extracts 16 structured fields per drug, including DILI likelihood score, injury pattern, enzyme elevation rates, dose information, and more. It uses a **two-stage extraction strategy**:
