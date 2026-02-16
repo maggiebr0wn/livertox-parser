@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiverTox Extraction Report</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --bg: #fafafa;
+            --surface: #ffffff;
+            --border: #e0e0e0;
+            --text: #212121;
+            --text-muted: #757575;
+            --primary: #1565c0;
+            --primary-light: #e3f2fd;
+            --success: #2e7d32;
+            --warning: #f57f17;
+            --danger: #c62828;
+            --radius: 8px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Source Sans 3', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 0 2rem;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Metric cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .metric-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .metric-card .value.success { color: var(--success); }
+        .metric-card .value.warning { color: var(--warning); }
+
+        .metric-card .label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Section headings */
+        .section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .section h2 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Charts grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .chart-container {
+            min-height: 350px;
+        }
+
+        /* Error table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-weight: 600;
+            background: var(--bg);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        td.num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            text-align: right;
+        }
+
+        td.center, th.center { text-align: center; }
+
+        tr:hover { background: var(--primary-light); }
+
+        .drug-name { font-weight: 600; }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .tag-mismatch { background: #ffebee; color: var(--danger); }
+        .tag-false_positive { background: #fff3e0; color: var(--warning); }
+        .tag-false_negative { background: #e3f2fd; color: var(--primary); }
+
+        /* DILI badges */
+        .dili-badge {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: white;
+        }
+
+        .dili-badge.dili-A { background: #d32f2f; }
+        .dili-badge.dili-B { background: #f57c00; }
+        .dili-badge.dili-C { background: #fbc02d; color: #333; }
+        .dili-badge.dili-D { background: #7cb342; }
+        .dili-badge.dili-E { background: #2196f3; }
+
+        /* Search and controls */
+        .table-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+
+        .search-input {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            font-family: inherit;
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .btn {
+            padding: 0.5rem 1.25rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .drug-table-wrapper {
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LiverTox Extraction Pipeline Report</h1>
+            <p>Structured data extraction from 85 LiverTox drug XML documents</p>
+        </header>
+
+        <!-- Metric cards -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="value">85</div>
+                <div class="label">Total Drugs</div>
+            </div>
+            <div class="metric-card">
+                <div class="value success">93%</div>
+                <div class="label">Gold Standard Accuracy</div>
+            </div>
+            <div class="metric-card">
+                <div class="value success">100%</div>
+                <div class="label">Validation Pass Rate</div>
+            </div>
+            <div class="metric-card">
+                <div class="value">11</div>
+                <div class="label">Fictional Drugs Detected</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="section">
+            <h2>Extraction Overview</h2>
+            <div class="charts-grid">
+                <div id="dili-chart" class="chart-container"></div>
+                <div id="coverage-chart" class="chart-container"></div>
+            </div>
+        </div>
+
+        <!-- Accuracy -->
+        <div class="section">
+            <h2>Per-Field Accuracy (Gold Standard, n=15)</h2>
+            <div id="accuracy-chart" class="chart-container"></div>
+        </div>
+
+        <!-- Errors -->
+        <div class="section">
+            <h2>Error Analysis</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Drug</th>
+                        <th>Field</th>
+                        <th>Predicted</th>
+                        <th>Gold Standard</th>
+                        <th>Error Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>Tolmetin</td>
+                    <td>fraction_patients_with_enzyme_elevation</td>
+                    <td>0.01</td>
+                    <td>0.05</td>
+                    <td><span class="tag tag-mismatch">mismatch</span></td>
+                </tr>
+                <tr>
+                    <td>Acetaminophen</td>
+                    <td>fraction_patients_with_enzyme_elevation</td>
+                    <td>0.39</td>
+                    <td>null</td>
+                    <td><span class="tag tag-false_positive">false_positive</span></td>
+                </tr>
+                <tr>
+                    <td>Felodipine</td>
+                    <td>fraction_patients_with_enzyme_elevation</td>
+                    <td>0.05</td>
+                    <td>null</td>
+                    <td><span class="tag tag-false_positive">false_positive</span></td>
+                </tr>
+                <tr>
+                    <td>Fluoxetine</td>
+                    <td>fraction_patients_with_enzyme_elevation</td>
+                    <td>0.01</td>
+                    <td>null</td>
+                    <td><span class="tag tag-false_positive">false_positive</span></td>
+                </tr>
+                <tr>
+                    <td>Diclofenac</td>
+                    <td>fraction_patients_with_dili</td>
+                    <td>0.0005</td>
+                    <td>null</td>
+                    <td><span class="tag tag-false_positive">false_positive</span></td>
+                </tr>
+                <tr>
+                    <td>Chlorpromazine</td>
+                    <td>fraction_patients_with_dili</td>
+                    <td>0.002</td>
+                    <td>null</td>
+                    <td><span class="tag tag-false_positive">false_positive</span></td>
+                </tr>
+                <tr>
+                    <td>Amitriptyline</td>
+                    <td>is_immune_mediated</td>
+                    <td>True</td>
+                    <td>False</td>
+                    <td><span class="tag tag-mismatch">mismatch</span></td>
+                </tr>
+                <tr>
+                    <td>Diclofenac</td>
+                    <td>is_immune_mediated</td>
+                    <td>True</td>
+                    <td>False</td>
+                    <td><span class="tag tag-mismatch">mismatch</span></td>
+                </tr>
+                <tr>
+                    <td>Fenofibrate</td>
+                    <td>is_immune_mediated</td>
+                    <td>True</td>
+                    <td>False</td>
+                    <td><span class="tag tag-mismatch">mismatch</span></td>
+                </tr>
+                <tr>
+                    <td>Zileuton</td>
+                    <td>bilirubin_peak</td>
+                    <td>null</td>
+                    <td>12.8</td>
+                    <td><span class="tag tag-false_negative">false_negative</span></td>
+                </tr>
+                <tr>
+                    <td>Itraconazole</td>
+                    <td>regulatory_status</td>
+                    <td>null</td>
+                    <td>approved</td>
+                    <td><span class="tag tag-false_negative">false_negative</span></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Drug table -->
+        <div class="section">
+            <h2>All Drug Extractions</h2>
+            <div class="table-controls">
+                <input type="text" id="search" class="search-input" placeholder="Search drugs..." onkeyup="filterTable()">
+                <button class="btn" onclick="downloadCSV()">Download CSV</button>
+            </div>
+            <div class="drug-table-wrapper">
+                <table id="drug-table">
+                    <thead>
+                        <tr>
+                            <th>Drug</th>
+                            <th class="center">DILI</th>
+                            <th>Pattern</th>
+                            <th>Enzyme Frac</th>
+                            <th>DILI Frac</th>
+                            <th>R-ratio</th>
+                            <th>Peak ALT</th>
+                            <th class="center">Immune</th>
+                            <th>Safe Dose</th>
+                            <th>Onset</th>
+                            <th>Reg. Status</th>
+                            <th>Fields</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                <tr class="dili-A">
+                    <td class="drug-name">Acetaminophen</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.3900</td>
+                    <td class="num"></td>
+                    <td class="num">14.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>3 grams daily</td>
+                    <td>1-3 days</td>
+                    <td></td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Ambrisentan</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num">0.0300</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>10 mg once daily</td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">3</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Amiodarone</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.5000</td>
+                    <td class="num">0.0100</td>
+                    <td class="num">13.1</td>
+                    <td class="num">100.0</td>
+                    <td class="center"></td>
+                    <td>200 mg daily</td>
+                    <td>>1 days</td>
+                    <td></td>
+                    <td class="num">9</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Amitriptyline</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.1200</td>
+                    <td class="num"></td>
+                    <td class="num">22.0</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>75 mg daily</td>
+                    <td>1-14 months</td>
+                    <td></td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Amodiaquine</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0100</td>
+                    <td class="num">0.0001</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>10 mg/kg once daily for 3 days</td>
+                    <td>1-4 months</td>
+                    <td></td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Amoxicillin</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>cholestatic</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num">1.2</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>250 mg every 8 hours</td>
+                    <td><14 days</td>
+                    <td>approved</td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Atorvastatin</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>cholestatic</td>
+                    <td class="num">0.0300</td>
+                    <td class="num">0.0001</td>
+                    <td class="num">3.0</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>10 mg daily</td>
+                    <td>1-24 months</td>
+                    <td>approved</td>
+                    <td class="num">10</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Azathioprine</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>mixed</td>
+                    <td class="num"></td>
+                    <td class="num">0.0010</td>
+                    <td class="num">0.9</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>50 mg daily</td>
+                    <td>months</td>
+                    <td></td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Benzbromarone</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0010</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td>1-6 months</td>
+                    <td></td>
+                    <td class="num">4</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Benztropine</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>0.5 mg daily</td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">2</td>
+                </tr>
+                <tr class="dili-C">
+                    <td class="drug-name">Bosentan</td>
+                    <td class="center"><span class="dili-badge dili-C">C</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.0400</td>
+                    <td class="num"></td>
+                    <td class="num">2.5</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>62.5 mg twice daily</td>
+                    <td>1-6 months</td>
+                    <td></td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Buspirone</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>15 mg daily</td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">2</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Carbamazepine</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.2200</td>
+                    <td class="num"></td>
+                    <td class="num">4.6</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>200 mg twice daily</td>
+                    <td>7-56 days</td>
+                    <td></td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Cardizepam</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Celecoxib</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0110</td>
+                    <td class="num"></td>
+                    <td class="num">13.8</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>100 mg twice daily</td>
+                    <td>3-21 days</td>
+                    <td></td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Chlorpromazine</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>cholestatic</td>
+                    <td class="num">0.4000</td>
+                    <td class="num">0.0020</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>100 mg daily</td>
+                    <td>7-35 days</td>
+                    <td></td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-D">
+                    <td class="drug-name">Clomipramine</td>
+                    <td class="center"><span class="dili-badge dili-D">D</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.0300</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>100 mg daily</td>
+                    <td>7-28 days</td>
+                    <td></td>
+                    <td class="num">5</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Clozapine</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.2000</td>
+                    <td class="num">0.0005</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>300 mg daily</td>
+                    <td>weeks</td>
+                    <td>approved</td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Cyclophosphamide</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.4300</td>
+                    <td class="num"></td>
+                    <td class="num">33.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>1 mg/kg daily</td>
+                    <td>2-8 weeks</td>
+                    <td></td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-D">
+                    <td class="drug-name">Dabigatran</td>
+                    <td class="center"><span class="dili-badge dili-D">D</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.0300</td>
+                    <td class="num">0.0005</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>150 mg twice daily</td>
+                    <td><28 days</td>
+                    <td></td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Dermacillin</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="dili-D">
+                    <td class="drug-name">Desipramine</td>
+                    <td class="center"><span class="dili-badge dili-D">D</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.1600</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>200 mg daily</td>
+                    <td>1-8 weeks</td>
+                    <td></td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Diclofenac</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.1500</td>
+                    <td class="num">0.0005</td>
+                    <td class="num">9.0</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>50 mg three times daily</td>
+                    <td>7-365 days</td>
+                    <td></td>
+                    <td class="num">9</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Endocrinex</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="dili-D">
+                    <td class="drug-name">Entacapone</td>
+                    <td class="center"><span class="dili-badge dili-D">D</span></td>
+                    <td>cholestatic</td>
+                    <td class="num">0.0050</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>200 mg with each dose of levodopa/carbidopa</td>
+                    <td>14-42 days</td>
+                    <td>approved</td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Felbamate</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num"></td>
+                    <td class="num">0.0001</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>400 mg twice daily</td>
+                    <td>1-6 months</td>
+                    <td></td>
+                    <td class="num">5</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Felodipine</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num">0.0500</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>2.5 mg once daily</td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">3</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Felodipinee</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num">0.0500</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>2.5 mg once daily</td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">3</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Fenofibrate</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.2000</td>
+                    <td class="num"></td>
+                    <td class="num">12.0</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>43 mg daily</td>
+                    <td>>2 weeks</td>
+                    <td></td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Flavoxate</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>100 mg three or four times daily</td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">1</td>
+                </tr>
+                <tr class="dili-C">
+                    <td class="drug-name">Fluoxetine</td>
+                    <td class="center"><span class="dili-badge dili-C">C</span></td>
+                    <td>cholestatic</td>
+                    <td class="num">0.0100</td>
+                    <td class="num"></td>
+                    <td class="num">0.9</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>20 mg daily</td>
+                    <td>2-12 weeks</td>
+                    <td></td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Flutamide</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.6200</td>
+                    <td class="num">0.0050</td>
+                    <td class="num">16.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>250 mg two to three times daily</td>
+                    <td>1-10 months</td>
+                    <td>approved</td>
+                    <td class="num">9</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Gastrozine</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Hematolix</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">HepC</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Hepatrofin</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Ibuprofen</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.1600</td>
+                    <td class="num"></td>
+                    <td class="num">17.9</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>400 mg three to four times daily</td>
+                    <td>2-42 days</td>
+                    <td></td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Imipramine</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.2000</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>75 mg daily</td>
+                    <td>7-56 days</td>
+                    <td></td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Immunexor</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="dili-C">
+                    <td class="drug-name">Indomethacin</td>
+                    <td class="center"><span class="dili-badge dili-C">C</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0100</td>
+                    <td class="num"></td>
+                    <td class="num">9.5</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>25 mg two to three times daily</td>
+                    <td>7-56 days</td>
+                    <td></td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Itraconazole</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>cholestatic</td>
+                    <td class="num">0.0500</td>
+                    <td class="num"></td>
+                    <td class="num">1.7</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>100 mg daily</td>
+                    <td>1-6 months</td>
+                    <td></td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Ketoconazole</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.1200</td>
+                    <td class="num">0.0001</td>
+                    <td class="num">7.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>200 mg once daily</td>
+                    <td>months</td>
+                    <td></td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Lapatinib</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0600</td>
+                    <td class="num">0.0020</td>
+                    <td class="num">10.0</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>1250 mg once daily</td>
+                    <td>1-3 months</td>
+                    <td></td>
+                    <td class="num">9</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Levofloxacin</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0350</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>250 mg daily</td>
+                    <td>1-3 weeks</td>
+                    <td>approved</td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Lisinopril</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0200</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>20 mg daily</td>
+                    <td>2-48 weeks</td>
+                    <td></td>
+                    <td class="num">5</td>
+                </tr>
+                <tr class="dili-C">
+                    <td class="drug-name">Meloxicam</td>
+                    <td class="center"><span class="dili-badge dili-C">C</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.0100</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>7.5 mg once daily</td>
+                    <td>1-5 weeks</td>
+                    <td>approved</td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Metformin</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0100</td>
+                    <td class="num"></td>
+                    <td class="num">26.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>1000 mg to 2550 mg daily taken in two divided doses</td>
+                    <td>1-8 weeks</td>
+                    <td>approved</td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Methotrexate</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.5000</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num">20.0</td>
+                    <td class="center"></td>
+                    <td>7.5 mg weekly</td>
+                    <td>hours</td>
+                    <td>approved</td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Methyldopa</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.3500</td>
+                    <td class="num"></td>
+                    <td class="num">28.0</td>
+                    <td class="num">100.0</td>
+                    <td class="center">Yes</td>
+                    <td>2000 mg daily</td>
+                    <td>14-84 days</td>
+                    <td>approved</td>
+                    <td class="num">10</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Minoxidil</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>10 mg daily</td>
+                    <td></td>
+                    <td>approved</td>
+                    <td class="num">3</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Nadolol</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0100</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>40 mg once daily</td>
+                    <td>28-168 days</td>
+                    <td></td>
+                    <td class="num">5</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Naproxen</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0400</td>
+                    <td class="num"></td>
+                    <td class="num">15.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>250 mg twice daily</td>
+                    <td>7-84 days</td>
+                    <td>approved</td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Nefazodone</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num">26.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>200 mg daily</td>
+                    <td>weeks</td>
+                    <td>approved</td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Neuroxalin</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Nicardipine</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td>idiosyncratic</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>60 mg daily</td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">2</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Nifedipine</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>cholestatic</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>30 mg daily</td>
+                    <td>1-2 months</td>
+                    <td></td>
+                    <td class="num">4</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Nimesulide</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0100</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>100 mg twice daily</td>
+                    <td>28 days</td>
+                    <td></td>
+                    <td class="num">5</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Nitrofurantoin</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num"></td>
+                    <td class="num">0.0007</td>
+                    <td class="num">29.0</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>50 mg daily</td>
+                    <td>weeks</td>
+                    <td>approved</td>
+                    <td class="num">9</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Olanzapine</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.5000</td>
+                    <td class="num">0.0008</td>
+                    <td class="num">3.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>20 mg daily</td>
+                    <td>1-4 weeks</td>
+                    <td>approved</td>
+                    <td class="num">9</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Orphenadrine</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>100 mg twice daily</td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">2</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Oxybutynin</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>10 mg daily</td>
+                    <td></td>
+                    <td>approved</td>
+                    <td class="num">3</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Paroxetine</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0100</td>
+                    <td class="num"></td>
+                    <td class="num">7.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>20 mg daily</td>
+                    <td>14-365 days</td>
+                    <td>approved</td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Penbutolol</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0200</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>20 mg once daily</td>
+                    <td>4-24 weeks</td>
+                    <td></td>
+                    <td class="num">5</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Pimozide</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>10 mg daily</td>
+                    <td></td>
+                    <td>approved</td>
+                    <td class="num">3</td>
+                </tr>
+                <tr class="dili-C">
+                    <td class="drug-name">Pioglitazone</td>
+                    <td class="center"><span class="dili-badge dili-C">C</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.0026</td>
+                    <td class="num"></td>
+                    <td class="num">2.1</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>15 mg daily</td>
+                    <td>1-6 months</td>
+                    <td></td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Propantheline</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>7.5 mg three times daily</td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">1</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Pulmoxate</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Renalyte</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="num">0</td>
+                </tr>
+                <tr class="dili-C">
+                    <td class="drug-name">Rosiglitazone</td>
+                    <td class="center"><span class="dili-badge dili-C">C</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0025</td>
+                    <td class="num"></td>
+                    <td class="num">12.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>4 mg daily</td>
+                    <td>1-12 weeks</td>
+                    <td></td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Simvastatin</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>cholestatic</td>
+                    <td class="num">0.0500</td>
+                    <td class="num"></td>
+                    <td class="num">25.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>5 mg daily</td>
+                    <td>7-1095 days</td>
+                    <td>approved</td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Stavudine</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>cholestatic</td>
+                    <td class="num">0.5000</td>
+                    <td class="num"></td>
+                    <td class="num">1.9</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>30 mg every 12 hours</td>
+                    <td>2-6 months</td>
+                    <td>approved</td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Streptomycin</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>15 mg/kg daily</td>
+                    <td></td>
+                    <td>approved</td>
+                    <td class="num">3</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Sunitinib</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.3900</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>50 mg daily</td>
+                    <td>>7 days</td>
+                    <td></td>
+                    <td class="num">5</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Tacrane</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0200</td>
+                    <td class="num"></td>
+                    <td class="num">42.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>20 mg four times daily</td>
+                    <td>2-8 weeks</td>
+                    <td>approved</td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Tacrine</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0200</td>
+                    <td class="num"></td>
+                    <td class="num">42.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>20 mg four times daily</td>
+                    <td>2-8 weeks</td>
+                    <td>approved</td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Tamoxifen</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>mixed</td>
+                    <td class="num">0.5000</td>
+                    <td class="num"></td>
+                    <td class="num">15.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>20 mg daily</td>
+                    <td><6 months</td>
+                    <td>approved</td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Terbinafine</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0100</td>
+                    <td class="num"></td>
+                    <td class="num">3.7</td>
+                    <td class="num"></td>
+                    <td class="center">Yes</td>
+                    <td>250 mg once daily</td>
+                    <td><42 days</td>
+                    <td></td>
+                    <td class="num">8</td>
+                </tr>
+                <tr class="dili-E">
+                    <td class="drug-name">Theophylline</td>
+                    <td class="center"><span class="dili-badge dili-E">E</span></td>
+                    <td></td>
+                    <td class="num">0.0100</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>100 mg three to four times daily</td>
+                    <td></td>
+                    <td>approved</td>
+                    <td class="num">4</td>
+                </tr>
+                <tr class="">
+                    <td class="drug-name">Ticlopidine</td>
+                    <td class="center"><span class="dili-badge "></span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0400</td>
+                    <td class="num"></td>
+                    <td class="num">4.4</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>250 mg twice daily</td>
+                    <td>1-24 weeks</td>
+                    <td>approved</td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="dili-C">
+                    <td class="drug-name">Tolcapone</td>
+                    <td class="center"><span class="dili-badge dili-C">C</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0500</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>100 mg three times daily</td>
+                    <td>1-5 months</td>
+                    <td>approved</td>
+                    <td class="num">7</td>
+                </tr>
+                <tr class="dili-D">
+                    <td class="drug-name">Tolmetin</td>
+                    <td class="center"><span class="dili-badge dili-D">D</span></td>
+                    <td></td>
+                    <td class="num">0.0100</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>1200 mg daily</td>
+                    <td></td>
+                    <td>approved</td>
+                    <td class="num">4</td>
+                </tr>
+                <tr class="dili-A">
+                    <td class="drug-name">Troglitazone</td>
+                    <td class="center"><span class="dili-badge dili-A">A</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0050</td>
+                    <td class="num"></td>
+                    <td class="num">17.0</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>400 mg daily</td>
+                    <td>1-6 months</td>
+                    <td></td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="dili-B">
+                    <td class="drug-name">Verapamil</td>
+                    <td class="center"><span class="dili-badge dili-B">B</span></td>
+                    <td>cholestatic</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="num">0.6</td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>120 mg daily</td>
+                    <td>2-8 weeks</td>
+                    <td></td>
+                    <td class="num">5</td>
+                </tr>
+                <tr class="dili-C">
+                    <td class="drug-name">Warfarin</td>
+                    <td class="center"><span class="dili-badge dili-C">C</span></td>
+                    <td>cholestatic</td>
+                    <td class="num"></td>
+                    <td class="num">0.0020</td>
+                    <td class="num"></td>
+                    <td class="num"></td>
+                    <td class="center"></td>
+                    <td>5 mg daily</td>
+                    <td>21-56 days</td>
+                    <td>approved</td>
+                    <td class="num">6</td>
+                </tr>
+                <tr class="dili-D">
+                    <td class="drug-name">Zileuton</td>
+                    <td class="center"><span class="dili-badge dili-D">D</span></td>
+                    <td>hepatocellular</td>
+                    <td class="num">0.0190</td>
+                    <td class="num"></td>
+                    <td class="num">25.0</td>
+                    <td class="num">33.0</td>
+                    <td class="center"></td>
+                    <td>2400 mg daily</td>
+                    <td>42 days</td>
+                    <td>approved</td>
+                    <td class="num">9</td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DILI score distribution chart
+        Plotly.newPlot('dili-chart', [{
+            x: ["A", "B", "C", "D", "E", "E*", "X", "None"],
+            y: [24, 19, 8, 6, 13, 0, 0, 15],
+            type: 'bar',
+            marker: { color: ["#d32f2f", "#f57c00", "#fbc02d", "#7cb342", "#2196f3", "#9c27b0", "#757575", "#bdbdbd"] },
+        }], {
+            title: 'DILI Likelihood Score Distribution',
+            xaxis: { title: 'Score' },
+            yaxis: { title: 'Count' },
+            margin: { t: 40, b: 40, l: 50, r: 20 },
+            height: 350,
+        }, { responsive: true });
+
+        // Field coverage chart
+        Plotly.newPlot('coverage-chart', [{
+            y: ["dili_likelihood_score", "injury_pattern", "fraction_patients_with_enzyme_elevation", "fraction_patients_with_dili", "is_immune_mediated", "risk_factors", "safe_dose", "toxic_dose", "onset_time", "peak_alt", "peak_alp", "r_ratio", "bilirubin_peak", "regulatory_status"],
+            x: [82.35294117647058, 70.58823529411765, 65.88235294117646, 17.647058823529413, 20.0, 24.705882352941178, 85.88235294117646, 3.5294117647058822, 69.41176470588235, 4.705882352941177, 1.1764705882352942, 44.70588235294118, 0.0, 35.294117647058826],
+            type: 'bar',
+            orientation: 'h',
+            marker: { color: '#1565c0' },
+        }], {
+            title: 'Field Coverage (%)',
+            xaxis: { title: '% of drugs with value', range: [0, 100] },
+            margin: { t: 40, b: 40, l: 200, r: 20 },
+            height: 350,
+        }, { responsive: true });
+
+        // Per-field accuracy chart
+        Plotly.newPlot('accuracy-chart', [{
+            x: ["dili_likelihood_score", "injury_pattern", "fraction_patients_with_enzyme_elevation", "fraction_patients_with_dili", "is_immune_mediated", "r_ratio", "peak_alt", "peak_alp", "bilirubin_peak", "regulatory_status"],
+            y: [100.0, 100.0, 73.33333333333333, 86.66666666666667, 80.0, 100.0, 100.0, 100.0, 93.33333333333333, 93.33333333333333],
+            type: 'bar',
+            marker: {
+                color: [100.0, 100.0, 73.33333333333333, 86.66666666666667, 80.0, 100.0, 100.0, 100.0, 93.33333333333333, 93.33333333333333],
+                colorscale: [[0, '#c62828'], [0.7, '#f57f17'], [0.9, '#7cb342'], [1, '#2e7d32']],
+                cmin: 50,
+                cmax: 100,
+            },
+        }], {
+            title: 'Accuracy by Field (%)',
+            yaxis: { title: 'Accuracy %', range: [0, 105] },
+            xaxis: { tickangle: -35 },
+            margin: { t: 40, b: 120, l: 50, r: 20 },
+            height: 380,
+        }, { responsive: true });
+
+        // Table search
+        function filterTable() {
+            const query = document.getElementById('search').value.toLowerCase();
+            const rows = document.querySelectorAll('#drug-table tbody tr');
+            rows.forEach(row => {
+                const drug = row.cells[0].textContent.toLowerCase();
+                row.style.display = drug.includes(query) ? '' : 'none';
+            });
+        }
+
+        // CSV download
+        const tableData = [{"drug_name": "Acetaminophen", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.3900", "fraction_dili": "", "r_ratio": "14.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "3 grams daily", "onset_time": "1-3 days", "regulatory_status": "", "fields_filled": 8}, {"drug_name": "Ambrisentan", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "0.0300", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "10 mg once daily", "onset_time": "", "regulatory_status": "", "fields_filled": 3}, {"drug_name": "Amiodarone", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.5000", "fraction_dili": "0.0100", "r_ratio": "13.1", "peak_alt": "100.0", "is_immune_mediated": "", "safe_dose": "200 mg daily", "onset_time": ">1 days", "regulatory_status": "", "fields_filled": 9}, {"drug_name": "Amitriptyline", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.1200", "fraction_dili": "", "r_ratio": "22.0", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "75 mg daily", "onset_time": "1-14 months", "regulatory_status": "", "fields_filled": 7}, {"drug_name": "Amodiaquine", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0100", "fraction_dili": "0.0001", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "10 mg/kg once daily for 3 days", "onset_time": "1-4 months", "regulatory_status": "", "fields_filled": 6}, {"drug_name": "Amoxicillin", "dili_likelihood_score": "B", "injury_pattern": "cholestatic", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "1.2", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "250 mg every 8 hours", "onset_time": "<14 days", "regulatory_status": "approved", "fields_filled": 7}, {"drug_name": "Atorvastatin", "dili_likelihood_score": "A", "injury_pattern": "cholestatic", "fraction_enzyme": "0.0300", "fraction_dili": "0.0001", "r_ratio": "3.0", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "10 mg daily", "onset_time": "1-24 months", "regulatory_status": "approved", "fields_filled": 10}, {"drug_name": "Azathioprine", "dili_likelihood_score": "A", "injury_pattern": "mixed", "fraction_enzyme": "", "fraction_dili": "0.0010", "r_ratio": "0.9", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "50 mg daily", "onset_time": "months", "regulatory_status": "", "fields_filled": 7}, {"drug_name": "Benzbromarone", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0010", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "1-6 months", "regulatory_status": "", "fields_filled": 4}, {"drug_name": "Benztropine", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "0.5 mg daily", "onset_time": "", "regulatory_status": "", "fields_filled": 2}, {"drug_name": "Bosentan", "dili_likelihood_score": "C", "injury_pattern": "mixed", "fraction_enzyme": "0.0400", "fraction_dili": "", "r_ratio": "2.5", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "62.5 mg twice daily", "onset_time": "1-6 months", "regulatory_status": "", "fields_filled": 6}, {"drug_name": "Buspirone", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "15 mg daily", "onset_time": "", "regulatory_status": "", "fields_filled": 2}, {"drug_name": "Carbamazepine", "dili_likelihood_score": "A", "injury_pattern": "mixed", "fraction_enzyme": "0.2200", "fraction_dili": "", "r_ratio": "4.6", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "200 mg twice daily", "onset_time": "7-56 days", "regulatory_status": "", "fields_filled": 7}, {"drug_name": "Cardizepam", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "Celecoxib", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0110", "fraction_dili": "", "r_ratio": "13.8", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "100 mg twice daily", "onset_time": "3-21 days", "regulatory_status": "", "fields_filled": 8}, {"drug_name": "Chlorpromazine", "dili_likelihood_score": "A", "injury_pattern": "cholestatic", "fraction_enzyme": "0.4000", "fraction_dili": "0.0020", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "100 mg daily", "onset_time": "7-35 days", "regulatory_status": "", "fields_filled": 7}, {"drug_name": "Clomipramine", "dili_likelihood_score": "D", "injury_pattern": "mixed", "fraction_enzyme": "0.0300", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "100 mg daily", "onset_time": "7-28 days", "regulatory_status": "", "fields_filled": 5}, {"drug_name": "Clozapine", "dili_likelihood_score": "A", "injury_pattern": "mixed", "fraction_enzyme": "0.2000", "fraction_dili": "0.0005", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "300 mg daily", "onset_time": "weeks", "regulatory_status": "approved", "fields_filled": 8}, {"drug_name": "Cyclophosphamide", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.4300", "fraction_dili": "", "r_ratio": "33.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "1 mg/kg daily", "onset_time": "2-8 weeks", "regulatory_status": "", "fields_filled": 7}, {"drug_name": "Dabigatran", "dili_likelihood_score": "D", "injury_pattern": "mixed", "fraction_enzyme": "0.0300", "fraction_dili": "0.0005", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "150 mg twice daily", "onset_time": "<28 days", "regulatory_status": "", "fields_filled": 6}, {"drug_name": "Dermacillin", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "Desipramine", "dili_likelihood_score": "D", "injury_pattern": "mixed", "fraction_enzyme": "0.1600", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "200 mg daily", "onset_time": "1-8 weeks", "regulatory_status": "", "fields_filled": 6}, {"drug_name": "Diclofenac", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.1500", "fraction_dili": "0.0005", "r_ratio": "9.0", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "50 mg three times daily", "onset_time": "7-365 days", "regulatory_status": "", "fields_filled": 9}, {"drug_name": "Endocrinex", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "Entacapone", "dili_likelihood_score": "D", "injury_pattern": "cholestatic", "fraction_enzyme": "0.0050", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "200 mg with each dose of levodopa/carbidopa", "onset_time": "14-42 days", "regulatory_status": "approved", "fields_filled": 7}, {"drug_name": "Felbamate", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "", "fraction_dili": "0.0001", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "400 mg twice daily", "onset_time": "1-6 months", "regulatory_status": "", "fields_filled": 5}, {"drug_name": "Felodipine", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "0.0500", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "2.5 mg once daily", "onset_time": "", "regulatory_status": "", "fields_filled": 3}, {"drug_name": "Felodipinee", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "0.0500", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "2.5 mg once daily", "onset_time": "", "regulatory_status": "", "fields_filled": 3}, {"drug_name": "Fenofibrate", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.2000", "fraction_dili": "", "r_ratio": "12.0", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "43 mg daily", "onset_time": ">2 weeks", "regulatory_status": "", "fields_filled": 7}, {"drug_name": "Flavoxate", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "100 mg three or four times daily", "onset_time": "", "regulatory_status": "", "fields_filled": 1}, {"drug_name": "Fluoxetine", "dili_likelihood_score": "C", "injury_pattern": "cholestatic", "fraction_enzyme": "0.0100", "fraction_dili": "", "r_ratio": "0.9", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "20 mg daily", "onset_time": "2-12 weeks", "regulatory_status": "", "fields_filled": 6}, {"drug_name": "Flutamide", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.6200", "fraction_dili": "0.0050", "r_ratio": "16.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "250 mg two to three times daily", "onset_time": "1-10 months", "regulatory_status": "approved", "fields_filled": 9}, {"drug_name": "Gastrozine", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "Hematolix", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "HepC", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "Hepatrofin", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "Ibuprofen", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.1600", "fraction_dili": "", "r_ratio": "17.9", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "400 mg three to four times daily", "onset_time": "2-42 days", "regulatory_status": "", "fields_filled": 8}, {"drug_name": "Imipramine", "dili_likelihood_score": "B", "injury_pattern": "mixed", "fraction_enzyme": "0.2000", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "75 mg daily", "onset_time": "7-56 days", "regulatory_status": "", "fields_filled": 6}, {"drug_name": "Immunexor", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "Indomethacin", "dili_likelihood_score": "C", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0100", "fraction_dili": "", "r_ratio": "9.5", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "25 mg two to three times daily", "onset_time": "7-56 days", "regulatory_status": "", "fields_filled": 8}, {"drug_name": "Itraconazole", "dili_likelihood_score": "B", "injury_pattern": "cholestatic", "fraction_enzyme": "0.0500", "fraction_dili": "", "r_ratio": "1.7", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "100 mg daily", "onset_time": "1-6 months", "regulatory_status": "", "fields_filled": 6}, {"drug_name": "Ketoconazole", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.1200", "fraction_dili": "0.0001", "r_ratio": "7.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "200 mg once daily", "onset_time": "months", "regulatory_status": "", "fields_filled": 7}, {"drug_name": "Lapatinib", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0600", "fraction_dili": "0.0020", "r_ratio": "10.0", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "1250 mg once daily", "onset_time": "1-3 months", "regulatory_status": "", "fields_filled": 9}, {"drug_name": "Levofloxacin", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0350", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "250 mg daily", "onset_time": "1-3 weeks", "regulatory_status": "approved", "fields_filled": 7}, {"drug_name": "Lisinopril", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0200", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "20 mg daily", "onset_time": "2-48 weeks", "regulatory_status": "", "fields_filled": 5}, {"drug_name": "Meloxicam", "dili_likelihood_score": "C", "injury_pattern": "mixed", "fraction_enzyme": "0.0100", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "7.5 mg once daily", "onset_time": "1-5 weeks", "regulatory_status": "approved", "fields_filled": 6}, {"drug_name": "Metformin", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0100", "fraction_dili": "", "r_ratio": "26.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "1000 mg to 2550 mg daily taken in two divided doses", "onset_time": "1-8 weeks", "regulatory_status": "approved", "fields_filled": 7}, {"drug_name": "Methotrexate", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.5000", "fraction_dili": "", "r_ratio": "", "peak_alt": "20.0", "is_immune_mediated": "", "safe_dose": "7.5 mg weekly", "onset_time": "hours", "regulatory_status": "approved", "fields_filled": 8}, {"drug_name": "Methyldopa", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.3500", "fraction_dili": "", "r_ratio": "28.0", "peak_alt": "100.0", "is_immune_mediated": "Yes", "safe_dose": "2000 mg daily", "onset_time": "14-84 days", "regulatory_status": "approved", "fields_filled": 10}, {"drug_name": "Minoxidil", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "10 mg daily", "onset_time": "", "regulatory_status": "approved", "fields_filled": 3}, {"drug_name": "Nadolol", "dili_likelihood_score": "E", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0100", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "40 mg once daily", "onset_time": "28-168 days", "regulatory_status": "", "fields_filled": 5}, {"drug_name": "Naproxen", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0400", "fraction_dili": "", "r_ratio": "15.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "250 mg twice daily", "onset_time": "7-84 days", "regulatory_status": "approved", "fields_filled": 8}, {"drug_name": "Nefazodone", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "26.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "200 mg daily", "onset_time": "weeks", "regulatory_status": "approved", "fields_filled": 6}, {"drug_name": "Neuroxalin", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "Nicardipine", "dili_likelihood_score": "", "injury_pattern": "idiosyncratic", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "60 mg daily", "onset_time": "", "regulatory_status": "", "fields_filled": 2}, {"drug_name": "Nifedipine", "dili_likelihood_score": "B", "injury_pattern": "cholestatic", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "30 mg daily", "onset_time": "1-2 months", "regulatory_status": "", "fields_filled": 4}, {"drug_name": "Nimesulide", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0100", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "100 mg twice daily", "onset_time": "28 days", "regulatory_status": "", "fields_filled": 5}, {"drug_name": "Nitrofurantoin", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "", "fraction_dili": "0.0007", "r_ratio": "29.0", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "50 mg daily", "onset_time": "weeks", "regulatory_status": "approved", "fields_filled": 9}, {"drug_name": "Olanzapine", "dili_likelihood_score": "A", "injury_pattern": "mixed", "fraction_enzyme": "0.5000", "fraction_dili": "0.0008", "r_ratio": "3.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "20 mg daily", "onset_time": "1-4 weeks", "regulatory_status": "approved", "fields_filled": 9}, {"drug_name": "Orphenadrine", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "100 mg twice daily", "onset_time": "", "regulatory_status": "", "fields_filled": 2}, {"drug_name": "Oxybutynin", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "10 mg daily", "onset_time": "", "regulatory_status": "approved", "fields_filled": 3}, {"drug_name": "Paroxetine", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0100", "fraction_dili": "", "r_ratio": "7.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "20 mg daily", "onset_time": "14-365 days", "regulatory_status": "approved", "fields_filled": 7}, {"drug_name": "Penbutolol", "dili_likelihood_score": "E", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0200", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "20 mg once daily", "onset_time": "4-24 weeks", "regulatory_status": "", "fields_filled": 5}, {"drug_name": "Pimozide", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "10 mg daily", "onset_time": "", "regulatory_status": "approved", "fields_filled": 3}, {"drug_name": "Pioglitazone", "dili_likelihood_score": "C", "injury_pattern": "mixed", "fraction_enzyme": "0.0026", "fraction_dili": "", "r_ratio": "2.1", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "15 mg daily", "onset_time": "1-6 months", "regulatory_status": "", "fields_filled": 6}, {"drug_name": "Propantheline", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "7.5 mg three times daily", "onset_time": "", "regulatory_status": "", "fields_filled": 1}, {"drug_name": "Pulmoxate", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "Renalyte", "dili_likelihood_score": "", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "", "onset_time": "", "regulatory_status": "", "fields_filled": 0}, {"drug_name": "Rosiglitazone", "dili_likelihood_score": "C", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0025", "fraction_dili": "", "r_ratio": "12.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "4 mg daily", "onset_time": "1-12 weeks", "regulatory_status": "", "fields_filled": 6}, {"drug_name": "Simvastatin", "dili_likelihood_score": "A", "injury_pattern": "cholestatic", "fraction_enzyme": "0.0500", "fraction_dili": "", "r_ratio": "25.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "5 mg daily", "onset_time": "7-1095 days", "regulatory_status": "approved", "fields_filled": 8}, {"drug_name": "Stavudine", "dili_likelihood_score": "A", "injury_pattern": "cholestatic", "fraction_enzyme": "0.5000", "fraction_dili": "", "r_ratio": "1.9", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "30 mg every 12 hours", "onset_time": "2-6 months", "regulatory_status": "approved", "fields_filled": 8}, {"drug_name": "Streptomycin", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "15 mg/kg daily", "onset_time": "", "regulatory_status": "approved", "fields_filled": 3}, {"drug_name": "Sunitinib", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.3900", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "50 mg daily", "onset_time": ">7 days", "regulatory_status": "", "fields_filled": 5}, {"drug_name": "Tacrane", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0200", "fraction_dili": "", "r_ratio": "42.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "20 mg four times daily", "onset_time": "2-8 weeks", "regulatory_status": "approved", "fields_filled": 7}, {"drug_name": "Tacrine", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0200", "fraction_dili": "", "r_ratio": "42.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "20 mg four times daily", "onset_time": "2-8 weeks", "regulatory_status": "approved", "fields_filled": 7}, {"drug_name": "Tamoxifen", "dili_likelihood_score": "B", "injury_pattern": "mixed", "fraction_enzyme": "0.5000", "fraction_dili": "", "r_ratio": "15.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "20 mg daily", "onset_time": "<6 months", "regulatory_status": "approved", "fields_filled": 8}, {"drug_name": "Terbinafine", "dili_likelihood_score": "B", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0100", "fraction_dili": "", "r_ratio": "3.7", "peak_alt": "", "is_immune_mediated": "Yes", "safe_dose": "250 mg once daily", "onset_time": "<42 days", "regulatory_status": "", "fields_filled": 8}, {"drug_name": "Theophylline", "dili_likelihood_score": "E", "injury_pattern": "", "fraction_enzyme": "0.0100", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "100 mg three to four times daily", "onset_time": "", "regulatory_status": "approved", "fields_filled": 4}, {"drug_name": "Ticlopidine", "dili_likelihood_score": "", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0400", "fraction_dili": "", "r_ratio": "4.4", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "250 mg twice daily", "onset_time": "1-24 weeks", "regulatory_status": "approved", "fields_filled": 6}, {"drug_name": "Tolcapone", "dili_likelihood_score": "C", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0500", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "100 mg three times daily", "onset_time": "1-5 months", "regulatory_status": "approved", "fields_filled": 7}, {"drug_name": "Tolmetin", "dili_likelihood_score": "D", "injury_pattern": "", "fraction_enzyme": "0.0100", "fraction_dili": "", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "1200 mg daily", "onset_time": "", "regulatory_status": "approved", "fields_filled": 4}, {"drug_name": "Troglitazone", "dili_likelihood_score": "A", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0050", "fraction_dili": "", "r_ratio": "17.0", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "400 mg daily", "onset_time": "1-6 months", "regulatory_status": "", "fields_filled": 6}, {"drug_name": "Verapamil", "dili_likelihood_score": "B", "injury_pattern": "cholestatic", "fraction_enzyme": "", "fraction_dili": "", "r_ratio": "0.6", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "120 mg daily", "onset_time": "2-8 weeks", "regulatory_status": "", "fields_filled": 5}, {"drug_name": "Warfarin", "dili_likelihood_score": "C", "injury_pattern": "cholestatic", "fraction_enzyme": "", "fraction_dili": "0.0020", "r_ratio": "", "peak_alt": "", "is_immune_mediated": "", "safe_dose": "5 mg daily", "onset_time": "21-56 days", "regulatory_status": "approved", "fields_filled": 6}, {"drug_name": "Zileuton", "dili_likelihood_score": "D", "injury_pattern": "hepatocellular", "fraction_enzyme": "0.0190", "fraction_dili": "", "r_ratio": "25.0", "peak_alt": "33.0", "is_immune_mediated": "", "safe_dose": "2400 mg daily", "onset_time": "42 days", "regulatory_status": "approved", "fields_filled": 9}];
+        function downloadCSV() {
+            const headers = Object.keys(tableData[0]);
+            const csv = [headers.join(',')];
+            tableData.forEach(row => {
+                csv.push(headers.map(h => {
+                    let val = row[h];
+                    if (typeof val === 'string' && val.includes(',')) val = '"' + val + '"';
+                    return val;
+                }).join(','));
+            });
+            const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'livertox_extractions.csv';
+            a.click();
+        }
+    </script>
+</body>
+</html>
